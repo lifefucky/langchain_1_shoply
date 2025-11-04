@@ -32,6 +32,7 @@ class ModelConfig:
     llm_model: str = "gpt-4o-mini"
     temperature: float = 0.3
     context_length: int = 3
+    brand_name: str = ""
 
     def to_dict(self) -> Dict[str, Any]:
         """
@@ -61,6 +62,7 @@ def setup_api_config() -> ModelConfig:
     llm_model = os.getenv("LLM_MODEL")
     temperature = float(os.getenv("LLM_TEMPERATURE"))
     context_length = int(os.getenv("CONTEXT_LENGTH"))
+    brand_name = os.getenv("BRAND_NAME")
 
     return ModelConfig(
         api_key=api_key,
@@ -68,7 +70,8 @@ def setup_api_config() -> ModelConfig:
         embedding_model=embedding_model,
         llm_model=llm_model,
         temperature=temperature,
-        context_length=context_length
+        context_length=context_length,
+        brand_name=brand_name
     )
 
 
@@ -156,7 +159,7 @@ class Consultant:
         )
         qa_prompt = PromptTemplate(
             template="""
-                    Ты — консультант магазина Shoply, отвечай кратко и вежливо. 
+                    Ты — консультант магазина {brand_name}, отвечай кратко и вежливо. 
                     Используй только предоставленный контекст для ответа.
                     Если информации нет — скажи, что не знаешь.
 
@@ -167,7 +170,7 @@ class Consultant:
 
                     Вопрос: {input}
                     Ответ:""",
-            input_variables=["context", "input", "history"]
+            input_variables=["brand_name", "context", "input", "history"]
         )
         document_chain = create_stuff_documents_chain(model, qa_prompt)
         return create_retrieval_chain(retriever, document_chain)
@@ -176,6 +179,7 @@ class Consultant:
         try:
             with get_openai_callback() as cb:
                 response = retrieval_chain.invoke({
+                    "brand_name": self.model_config.brand_name,
                     "input": query,
                     "history": self.format_conversation_history()
                 })
@@ -207,9 +211,6 @@ class Consultant:
             response = 'Пожалуйста, проверьте введенные данные.'
             self.add_log(type='error', query=query, message=response, event='order_error', event_type='not_found')
             return response
-
-    def process_query(self):
-        return
 
     def add_log(self, type: str = "info", query: str = None, message: Union[str, dict] = None, **kwargs):
         log_entry = {
@@ -249,7 +250,7 @@ def format_order_details(info: dict) -> str:
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Shoply Consultant Bot")
+    parser = argparse.ArgumentParser(description="Consultant Bot")
     parser.add_argument('--url', type=str, help='Base URL for LLM API')
     parser.add_argument('--model', type=str, help='LLM model name')
     parser.add_argument('--api-key', type=str, help='API key for authentication')
