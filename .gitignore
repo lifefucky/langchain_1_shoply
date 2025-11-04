@@ -154,6 +154,8 @@ venv.bak/
 
 # mkdocs documentation
 /site
+/ecom_bot/logs
+/ecom_bot/dump.py
 
 # mypy
 .mypy_cache/
